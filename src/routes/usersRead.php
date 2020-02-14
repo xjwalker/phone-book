@@ -9,6 +9,8 @@ $database = new Database();
 $db = $database->getConnection();
 
 $user = new User($db);
+
+$user->id = $_GET['id'];
 $r = $user->get();
 
 $r = $r == false ? ['data' => []] : $r;

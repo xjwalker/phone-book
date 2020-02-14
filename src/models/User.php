@@ -52,35 +52,34 @@ class User
         }
     }
 
-    private function log($print)
-    {
-        die(print_r($print, true));
-    }
-
     public function delete()
     {
         $query = 'DELETE FROM ' . $this->table . ' WHERE id = ?';
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->id);
         $stmt->execute();
+        $stmt->rowCount() == 0 ? $msg = 'No record found with id: ' . $this->id : null;
 
-        return $stmt->rowCount() . ' user got deleted (id: ' . $this->id . ')' .
-            ' along side the emails and phone numbers associated';
+        return $msg ?? $stmt->rowCount() .
+            ' user got deleted (id: ' . $this->id . ') along side the emails and phone numbers associated';
     }
 
     public function get()
     {
-        // TODO; Add pagination.
+        // todo; add pagination
         $query = 'SELECT ' .
             'u.id, u.first_name, u.last_name, u.created_at, u.updated_at,' .
             'GROUP_CONCAT(DISTINCT ue.email SEPARATOR ", ") as emails, ' .
             'GROUP_CONCAT(DISTINCT upn.phone_number SEPARATOR ", ") as phone_numbers ' .
             'FROM ' . $this->table . ' AS u ' .
             'LEFT JOIN user_emails as ue ON u.id = ue.user_id ' .
-            'LEFT JOIN user_phone_numbers AS upn ON u.id = upn.user_id ' .
-            'GROUP BY u.id';
+            'LEFT JOIN user_phone_numbers AS upn ON u.id = upn.user_id ';
+        $query .= !is_null($this->id) && !empty($this->id) ? 'WHERE u.id = ? LIMIT 1 ' : 'GROUP BY u.id';
 
         $stmt = $this->conn->prepare($query);
+        if (!is_null($this->id)) {
+            $stmt->bindParam(1, $this->id);
+        }
         $stmt->execute();
 
         $resp = array();
@@ -99,17 +98,6 @@ class User
         return $resp;
     }
 
-    public function getSingle()
-    {
-        // TODO; Add emails and phone numbers to each user.
-        $query = 'SELECT * FROM ' . $this->table . ' WHERE id = ? LIMIT 1';
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->id);
-        $stmt->execute();
-
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
     public function update()
     {
         // todo; add support to insert emails and phone numbers
@@ -123,4 +111,10 @@ class User
 
         return $stmt->rowCount() . ' new user was created';
     }
+
+    private function log($print)
+    {
+        die(print_r($print, true));
+    }
+
 }
