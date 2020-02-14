@@ -18,31 +18,67 @@ class User
 
     public function create()
     {
-        // todo; add support to insert emails and phone numbers
         $query = 'INSERT INTO ' . $this->table . ' ' .
             '(first_name, last_name, created_at, updated_at) ' .
-            'values (?, ?, NOW(), NOW())';
+            'VALUES (?, ?, NOW(), NOW())';
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->first_name);
         $stmt->bindParam(2, $this->last_name);
+
+        $stmt->execute();
+        $this->id = $this->conn->lastInsertId();
+
+        if (!is_null($this->emails)) {
+            $this->insertIntoChildTable('user_emails', 'email', $this->emails);
+        }
+
+        if (!is_null($this->phone_numbers)) {
+            $this->insertIntoChildTable('user_phone_numbers', 'phone_number', $this->phone_numbers);
+        }
+
+        return 'A new user was created';
+    }
+
+    private function insertIntoChildTable($tableName, $columnName, $values)
+    {
+        $query = 'INSERT INTO ' . $tableName .
+            ' (user_id, ' . $columnName . ', created_at, updated_at) VALUES (?, ?, NOW(), NOW())';
+        foreach ($values as $value) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(1, $this->id);
+            $stmt->bindParam(2, $value);
+            $stmt->execute();
+        }
+    }
+
+    private function log($print)
+    {
+        die(print_r($print, true));
+    }
+
+    public function delete()
+    {
+        $query = 'DELETE FROM ' . $this->table . ' WHERE id = ?';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $this->id);
         $stmt->execute();
 
-        return $stmt->rowCount() . ' new user was created';
+        return $stmt->rowCount() . ' user got deleted (id: ' . $this->id . ')' .
+            ' along side the emails and phone numbers associated';
     }
 
     public function get()
     {
-        // TODO; Add emails and phone numbers to each user.
         // TODO; Add pagination.
-
         $query = 'SELECT ' .
             'u.id, u.first_name, u.last_name, u.created_at, u.updated_at,' .
-            'GROUP_CONCAT(DISTINCT ue.email) as emails, ' .
-            'GROUP_CONCAT(upn.phone_number) as phone_numbers ' .
+            'GROUP_CONCAT(DISTINCT ue.email SEPARATOR ", ") as emails, ' .
+            'GROUP_CONCAT(DISTINCT upn.phone_number SEPARATOR ", ") as phone_numbers ' .
             'FROM ' . $this->table . ' AS u ' .
             'LEFT JOIN user_emails as ue ON u.id = ue.user_id ' .
             'LEFT JOIN user_phone_numbers AS upn ON u.id = upn.user_id ' .
-            'GROUP BY u.id, ue.id';
+            'GROUP BY u.id';
 
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -74,14 +110,17 @@ class User
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function delete()
+    public function update()
     {
-        $query = 'DELETE FROM ' . $this->table . ' WHERE id = ?';
+        // todo; add support to insert emails and phone numbers
+        $query = 'UPDATE ' . $this->table . ' SET ' .
+            '(first_name, last_name, created_at, updated_at) ' .
+            'values (?, ?, NOW(), NOW())';
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->id);
+        $stmt->bindParam(1, $this->first_name);
+        $stmt->bindParam(2, $this->last_name);
         $stmt->execute();
 
-        return $stmt->rowCount() . ' user got deleted (id: ' . $this->id . ')' .
-            ' along side the emails and phone numbers associated';
+        return $stmt->rowCount() . ' new user was created';
     }
 }
