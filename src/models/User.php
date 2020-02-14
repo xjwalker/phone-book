@@ -158,9 +158,4 @@ class User
 
         return $stmt->rowCount() . ' user updated';
     }
-
-    private function log($print)
-    {
-        die(print_r($print, true));
-    }
 }
