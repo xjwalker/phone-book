@@ -141,21 +141,57 @@ class User
         return null;
     }
 
+    public function update()
+    {
+        $failMsg = 'No user was updated';
+        if (is_null($this->id)) {
+            return $failMsg;
+        }
+        $fields = $this->solveUpdateFields();
+        if (is_null($fields)) {
+            return $failMsg;
+        }
+
+        $query = 'UPDATE ' . $this->table . ' SET ' . $fields . ' WHERE users.id=:id';
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($this->solveUpdateBinds());
+
+        return $stmt->rowCount() . ' user updated';
+    }
+
+    private function solveUpdateFields()
+    {
+        $fields = '';
+        $count = 0;
+        if ($this->isFieldSet($this->first_name)) {
+            $count++;
+            $fields .= 'first_name =:first_name';
+        }
+        if ($this->isFieldSet($this->last_name)) {
+            $fields .= $count > 0 ? ',' : '';
+            $fields .= 'last_name =:last_name';
+        }
+
+        return $fields == '' ? null : $fields;
+    }
+
+    private function solveUpdateBinds()
+    {
+        $binds = [];
+        if ($this->isFieldSet($this->first_name)) {
+            $binds['first_name'] = $this->first_name;
+        }
+        if ($this->isFieldSet($this->last_name)) {
+            $binds['last_name'] = $this->last_name;
+        }
+        $binds['id'] = $this->id;
+
+        return $binds;
+    }
+
     private function isFieldSet($field)
     {
         return !is_null($field) && !empty($field);
-    }
-
-    public function update()
-    {
-        $query = 'UPDATE ' . $this->table . ' SET ' .
-            '(first_name, last_name, created_at, updated_at) ' .
-            'values (?, ?, NOW(), NOW())';
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->first_name);
-        $stmt->bindParam(2, $this->last_name);
-        $stmt->execute();
-
-        return $stmt->rowCount() . ' user updated';
     }
 }
